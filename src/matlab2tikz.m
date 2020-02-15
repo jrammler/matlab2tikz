@@ -102,6 +102,9 @@ function matlab2tikz(varargin)
     %   MATLAB2TIKZ('arrowHeadSize', FLOAT, ...) allows to resize the arrow heads
     %   in quiver plots by rescaling the arrow heads by a positive scalar. (default: 10)
     %
+    %   MATLAB2TIKZ('arrowHeadStyle', FLOAT, ...) allows to set the style of the arrow
+    %   heads in quiver plots directly. (default: '-{Straight Barb[...]}')
+    %
     %   MATLAB2TIKZ('tikzFileComment',CHAR,...) adds a custom comment to the header
     %   of the output file. (default: '')
     %
@@ -212,6 +215,7 @@ function matlab2tikz(varargin)
     ipp = ipp.addParamValue(ipp, 'relativeDataPath', '', @ischar);
     ipp = ipp.addParamValue(ipp, 'noSize', false, @islogical);
     ipp = ipp.addParamValue(ipp, 'arrowHeadSize', 10, @(x) x>0);
+    ipp = ipp.addParamValue(ipp, 'arrowHeadStyle', '', @char);
 
     % Maximum chunk length.
     % TeX parses files line by line with a buffer of size buf_size. If the
@@ -4516,42 +4520,47 @@ function [m2t, str] = drawQuiverGroup(m2t, h, custom)
     if showArrowHead
         arrowHeadOptions = opts_new();
 
-        % In MATLAB (HG1), the arrow head is constructed to have an angle of
-        % approximately 18.263 degrees in 2D as can be derived from the
-        % |quiver| function.
-        % In 3D, the angle is no longer constant but it is approximately
-        % the same as for 2D quiver plots. So let's make our life easy.
-        % |test/examples/example_quivers.m| covers the calculations.
-        arrowHeadOptions = opts_add(arrowHeadOptions, 'angle''', '18.263');
+        % If the arrowHeadStyle option is passed, the head style in the
+        % quiver options is directly set
+        headStyle = m2t.args.arrowHeadStyle;
+        if isempty(headStyle)
+            % In MATLAB (HG1), the arrow head is constructed to have an angle of
+            % approximately 18.263 degrees in 2D as can be derived from the
+            % |quiver| function.
+            % In 3D, the angle is no longer constant but it is approximately
+            % the same as for 2D quiver plots. So let's make our life easy.
+            % |test/examples/example_quivers.m| covers the calculations.
+            arrowHeadOptions = opts_add(arrowHeadOptions, 'angle''', '18.263');
 
-        %TODO: scale the arrows more rigorously to match MATLAB behavior
-        % Currently, this is quite hard to do, since the size of the arrows
-        % is defined in pgfplots in absolute units (here we specify that those
-        % should be scaled up/down according to the data), while the data itself
-        % is in axis coordinates (or some scaled variant). I.e. we need the
-        % physical dimensions of the axis to compute the correct scaling!
-        %
-        % There is a "MaxHeadSize" property that plays a role.
-        % MaxHeadSize is said to be relative to the length of the quiver in the
-        % MATLAB documentation. However, in practice, there seems to be a SQRT
-        % involved somewhere (e.g. if u.^2 + v.^2 == 2, all MHS values >
-        % 1/sqrt(2) are capped to 1/sqrt(2)).
-        %
-        % NOTE: `set(h, 'MaxHeadSize')` is bugged in HG1 (not in HG2 or Octave)
-        % according to http://www.mathworks.com/matlabcentral/answers/96754
+            %TODO: scale the arrows more rigorously to match MATLAB behavior
+            % Currently, this is quite hard to do, since the size of the arrows
+            % is defined in pgfplots in absolute units (here we specify that those
+            % should be scaled up/down according to the data), while the data itself
+            % is in axis coordinates (or some scaled variant). I.e. we need the
+            % physical dimensions of the axis to compute the correct scaling!
+            %
+            % There is a "MaxHeadSize" property that plays a role.
+            % MaxHeadSize is said to be relative to the length of the quiver in the
+            % MATLAB documentation. However, in practice, there seems to be a SQRT
+            % involved somewhere (e.g. if u.^2 + v.^2 == 2, all MHS values >
+            % 1/sqrt(2) are capped to 1/sqrt(2)).
+            %
+            % NOTE: `set(h, 'MaxHeadSize')` is bugged in HG1 (not in HG2 or Octave)
+            % according to http://www.mathworks.com/matlabcentral/answers/96754
 
-        userInfo(m2t, ['Please change the "arrowHeadSize" option', ...
-            ' if the size of the arrows is incorrect.']);
-        arrowHeadSize = sprintf(m2t.ff, abs(m2t.args.arrowHeadSize));
+            userInfo(m2t, ['Please change the "arrowHeadSize" option', ...
+                ' if the size of the arrows is incorrect.']);
+            arrowHeadSize = sprintf(m2t.ff, abs(m2t.args.arrowHeadSize));
 
-        % Write out the actual scaling for TikZ.
-        % `\pgfplotspointsmetatransformed` is in the range [0, 1000], so
-        % divide by this span (as is done in the pgfplots manual) to normalize
-        % the arrow head size. First divide to avoid overflows.
-        arrowHeadOptions = opts_add(arrowHeadOptions, 'scale', ...
-            ['{' arrowHeadSize '/1000*\pgfplotspointmetatransformed}']);
+            % Write out the actual scaling for TikZ.
+            % `\pgfplotspointsmetatransformed` is in the range [0, 1000], so
+            % divide by this span (as is done in the pgfplots manual) to normalize
+            % the arrow head size. First divide to avoid overflows.
+            arrowHeadOptions = opts_add(arrowHeadOptions, 'scale', ...
+                ['{' arrowHeadSize '/1000*\pgfplotspointmetatransformed}']);
 
-        headStyle = ['-{Straight Barb[' opts_print(arrowHeadOptions) ']}'];
+            headStyle = ['-{Straight Barb[' opts_print(arrowHeadOptions) ']}'];
+        end
         quiverOptions = opts_add(quiverOptions, 'every arrow/.append style', ...
                                  ['{' headStyle '}']);
     end
