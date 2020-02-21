@@ -102,7 +102,7 @@ function matlab2tikz(varargin)
     %   MATLAB2TIKZ('arrowHeadSize', FLOAT, ...) allows to resize the arrow heads
     %   in quiver plots by rescaling the arrow heads by a positive scalar. (default: 10)
     %
-    %   MATLAB2TIKZ('arrowHeadStyle', FLOAT, ...) allows to set the style of the arrow
+    %   MATLAB2TIKZ('arrowHeadStyle', CHAR, ...) allows to set the style of the arrow
     %   heads in quiver plots directly. (default: '-{Straight Barb[...]}')
     %
     %   MATLAB2TIKZ('tikzFileComment',CHAR,...) adds a custom comment to the header
